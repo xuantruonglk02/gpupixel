@@ -95,3 +95,60 @@ if(GPUPIXEL_INSTALL)
   file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/desktop/demo.png
        DESTINATION ${BUILD_OUTPUT_DIR}/bin)
 endif()
+
+# ---- facebeauty CLI tool ----
+set(GPL_FACEBEAUTY_NAME "facebeauty")
+add_executable(${GPL_FACEBEAUTY_NAME}
+               ${CMAKE_CURRENT_SOURCE_DIR}/desktop/facebeauty.cc)
+
+# facebeauty needs glad/glfw headers and stb_image_write
+target_include_directories(${GPL_FACEBEAUTY_NAME}
+                           PRIVATE ${PROJECT_SOURCE_DIR}/third_party/glfw/deps)
+
+if(APPLE)
+  set_target_properties(
+    ${GPL_FACEBEAUTY_NAME}
+    PROPERTIES COMPILE_FLAGS "-x objective-c++"
+               MACOSX_BUNDLE FALSE
+               INSTALL_RPATH "@executable_path/../lib"
+               BUILD_WITH_INSTALL_RPATH TRUE)
+  target_compile_options(${GPL_FACEBEAUTY_NAME} PRIVATE "-fno-objc-arc")
+  target_link_libraries(
+    ${GPL_FACEBEAUTY_NAME}
+    PRIVATE "-framework OpenGL"
+            dl
+            glad::glad
+            glfw::glfw
+            gpupixel::gpupixel
+            ghc::filesystem)
+elseif(WIN32)
+  target_link_libraries(
+    ${GPL_FACEBEAUTY_NAME}
+    PRIVATE opengl32
+            glad::glad
+            glfw::glfw
+            gpupixel::gpupixel
+            ghc::filesystem)
+else()
+  set_target_properties(
+    ${GPL_FACEBEAUTY_NAME}
+    PROPERTIES INSTALL_RPATH "$ORIGIN/../lib"
+               BUILD_WITH_INSTALL_RPATH TRUE)
+  target_link_libraries(
+    ${GPL_FACEBEAUTY_NAME}
+    PRIVATE GL
+            dl
+            glad::glad
+            glfw::glfw
+            gpupixel::gpupixel
+            ghc::filesystem
+            stdc++fs)
+endif()
+
+if(GPUPIXEL_INSTALL)
+  install(
+    TARGETS ${GPL_FACEBEAUTY_NAME}
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin)
+endif()

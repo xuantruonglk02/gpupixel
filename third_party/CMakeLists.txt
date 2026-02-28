@@ -75,26 +75,12 @@ if(GPUPIXEL_ENABLE_FACE_DETECTOR)
   # Neural network acceleration framework (Apple platforms only)
   if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_library(mnn STATIC IMPORTED GLOBAL)
-    set(mnn_lib_path ${CMAKE_CURRENT_SOURCE_DIR}/mnn/libs/macos)
-
-    # find library file
-    find_library(
-      mnn_lib
-      NAMES "MNN"
-      PATHS ${mnn_lib_path}
-      NO_DEFAULT_PATH)
+    set(mnn_lib ${CMAKE_CURRENT_SOURCE_DIR}/mnn/libs/macos/MNN.framework/Versions/A/MNN)
 
     set_target_properties(mnn PROPERTIES IMPORTED_LOCATION ${mnn_lib})
   elseif(${CMAKE_SYSTEM_NAME} MATCHES "iOS")
     add_library(mnn STATIC IMPORTED GLOBAL)
-    set(mnn_lib_path ${CMAKE_CURRENT_SOURCE_DIR}/mnn/libs/ios)
-
-    # find library file
-    find_library(
-      mnn_lib
-      NAMES "MNN"
-      PATHS ${mnn_lib_path}
-      NO_DEFAULT_PATH)
+    set(mnn_lib ${CMAKE_CURRENT_SOURCE_DIR}/mnn/libs/ios/MNN.framework/MNN)
 
     set_target_properties(mnn PROPERTIES IMPORTED_LOCATION ${mnn_lib})
   endif()
