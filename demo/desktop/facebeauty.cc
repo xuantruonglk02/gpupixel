@@ -21,8 +21,10 @@
 #include <string>
 #include <vector>
 
-#include <EGL/egl.h>
-#include <GLES2/gl2.h>
+// clang-format off
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+// clang-format on
 
 #ifdef _WIN32
 #include <Shlwapi.h>
@@ -171,71 +173,39 @@ int main(int argc, char* argv[]) {
             << " blusher="   << params.blusher << "\n";
 
   // -------------------------------------------------------------------------
-  // 1. Tạo EGL offscreen context – không cần display/window
+  // 1. Create a hidden GLFW window – GPUPixel needs an OpenGL context
   // -------------------------------------------------------------------------
-  EGLDisplay egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-  if (egl_display == EGL_NO_DISPLAY) {
-      std::cerr << "[facebeauty] Failed to get EGL display\n";
-      return 1;
+  if (!glfwInit()) {
+    std::cerr << "[facebeauty] Failed to initialise GLFW\n";
+    return 1;
   }
 
-  EGLint major, minor;
-  if (!eglInitialize(egl_display, &major, &minor)) {
-      std::cerr << "[facebeauty] Failed to initialise EGL\n";
-      return 1;
+#ifdef __APPLE__
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#else
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+#endif
+  // Hide the window – we only need the GL context
+  glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+
+  GLFWwindow* window = glfwCreateWindow(1, 1, "offscreen", NULL, NULL);
+  if (!window) {
+    std::cerr << "[facebeauty] Failed to create GLFW window\n";
+    glfwTerminate();
+    return 1;
   }
+  glfwMakeContextCurrent(window);
 
-  EGLint config_attribs[] = {
-      EGL_SURFACE_TYPE,    EGL_PBUFFER_BIT,
-      EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-      EGL_RED_SIZE,        8,
-      EGL_GREEN_SIZE,      8,
-      EGL_BLUE_SIZE,       8,
-      EGL_ALPHA_SIZE,      8,
-      EGL_NONE
-  };
-
-  EGLConfig egl_config;
-  EGLint num_configs;
-  if (!eglChooseConfig(egl_display, config_attribs, &egl_config, 1, &num_configs) || num_configs == 0) {
-      std::cerr << "[facebeauty] Failed to choose EGL config\n";
-      eglTerminate(egl_display);
-      return 1;
+  if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+    std::cerr << "[facebeauty] Failed to initialise GLAD\n";
+    glfwDestroyWindow(window);
+    glfwTerminate();
+    return 1;
   }
-
-  EGLint pbuffer_attribs[] = {
-      EGL_WIDTH,  1,
-      EGL_HEIGHT, 1,
-      EGL_NONE
-  };
-  EGLSurface egl_surface = eglCreatePbufferSurface(egl_display, egl_config, pbuffer_attribs);
-  if (egl_surface == EGL_NO_SURFACE) {
-      std::cerr << "[facebeauty] Failed to create EGL surface\n";
-      eglTerminate(egl_display);
-      return 1;
-  }
-
-  EGLint ctx_attribs[] = {
-      EGL_CONTEXT_CLIENT_VERSION, 2,
-      EGL_NONE
-  };
-  EGLContext egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, ctx_attribs);
-  if (egl_context == EGL_NO_CONTEXT) {
-      std::cerr << "[facebeauty] Failed to create EGL context\n";
-      eglDestroySurface(egl_display, egl_surface);
-      eglTerminate(egl_display);
-      return 1;
-  }
-
-  if (!eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context)) {
-      std::cerr << "[facebeauty] Failed to make EGL context current\n";
-      eglDestroyContext(egl_display, egl_context);
-      eglDestroySurface(egl_display, egl_surface);
-      eglTerminate(egl_display);
-      return 1;
-  }
-
-  std::cout << "[facebeauty] EGL initialised (headless)\n";
 
   // -------------------------------------------------------------------------
   // 2. Set GPUPixel resource path (same directory as the executable)
@@ -306,10 +276,8 @@ int main(int argc, char* argv[]) {
 
   if (!rgba || out_w <= 0 || out_h <= 0) {
     std::cerr << "[facebeauty] Processing produced no output\n";
-    eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-    eglDestroyContext(egl_display, egl_context);
-    eglDestroySurface(egl_display, egl_surface);
-    eglTerminate(egl_display);
+    glfwDestroyWindow(window);
+    glfwTerminate();
     return 1;
   }
 
@@ -320,10 +288,8 @@ int main(int argc, char* argv[]) {
   if (!stbi_write_png(output_path.c_str(), out_w, out_h, 4, rgba, stride)) {
     std::cerr << "[facebeauty] Failed to write output image: "
               << output_path << "\n";
-    eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-    eglDestroyContext(egl_display, egl_context);
-    eglDestroySurface(egl_display, egl_surface);
-    eglTerminate(egl_display);
+    glfwDestroyWindow(window);
+    glfwTerminate();
     return 1;
   }
 
@@ -332,10 +298,8 @@ int main(int argc, char* argv[]) {
   // -------------------------------------------------------------------------
   // 8. Cleanup
   // -------------------------------------------------------------------------
-  eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-  eglDestroyContext(egl_display, egl_context);
-  eglDestroySurface(egl_display, egl_surface);
-  eglTerminate(egl_display);
+  glfwDestroyWindow(window);
+  glfwTerminate();
 
   return 0;
 }

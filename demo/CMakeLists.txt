@@ -136,9 +136,10 @@ else()
                BUILD_WITH_INSTALL_RPATH TRUE)
   target_link_libraries(
     ${GPL_FACEBEAUTY_NAME}
-    PRIVATE EGL
-            GLESv2
+    PRIVATE GL
             dl
+            glad::glad
+            glfw::glfw
             gpupixel::gpupixel
             ghc::filesystem
             stdc++fs)
