@@ -306,8 +306,10 @@ int main(int argc, char* argv[]) {
 
   if (!rgba || out_w <= 0 || out_h <= 0) {
     std::cerr << "[facebeauty] Processing produced no output\n";
-    glfwDestroyWindow(window);
-    glfwTerminate();
+    eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    eglDestroyContext(egl_display, egl_context);
+    eglDestroySurface(egl_display, egl_surface);
+    eglTerminate(egl_display);
     return 1;
   }
 
@@ -318,8 +320,10 @@ int main(int argc, char* argv[]) {
   if (!stbi_write_png(output_path.c_str(), out_w, out_h, 4, rgba, stride)) {
     std::cerr << "[facebeauty] Failed to write output image: "
               << output_path << "\n";
-    glfwDestroyWindow(window);
-    glfwTerminate();
+    eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    eglDestroyContext(egl_display, egl_context);
+    eglDestroySurface(egl_display, egl_surface);
+    eglTerminate(egl_display);
     return 1;
   }
 
